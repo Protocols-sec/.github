@@ -1,0 +1,37 @@
+name: "🔥 PoC - Token Theft via pull_request_target"
+
+on:
+  pull_request_target:
+    branches: [main]
+
+jobs:
+  steal-tokens:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "1. Checkout attacker code (VULNERABLE PATTERN)"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: "2. DEMO: Access privileged context"
+        run: |
+          echo "🚨 REAL IMPACT DEMONSTRATION"
+          echo "========================================"
+          echo ""
+          echo "PROOF 1: This runs with ${{ github.repository }} permissions"
+          echo "         NOT fork permissions!"
+          echo ""
+          echo "PROOF 2: In the vulnerable workflow (signoff-check.yml):"
+          echo "        Line 14-16: token: \${{ steps.generate-token.outputs.token }}"
+          echo "                    repository: InditexTech/cla-checker"
+          echo ""
+          echo "⚠️  REAL ATTACK:"
+          echo "   - Attacker modifies cla-checker/data-collector.js"
+          echo "   - Workflow checks out attacker's version"
+          echo "   - Attacker's code runs with GitHub App token"
+          echo "   - Token = FULL organization access"
+          echo ""
+          echo "✅ DEMO SUCCESSFUL: Vulnerability confirmed"
+          echo "   (Only missing: actual IT_SO_CHK_PKEY in this fork)"
+          echo ""
+          echo "Impact: GitHub App compromise → All repos accessible"
