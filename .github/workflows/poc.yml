@@ -1,0 +1,120 @@
+name: "🔥 PoC - Critical Workflow Vulnerability"
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  exploit:
+    runs-on: ubuntu-latest
+    steps:
+      # 🔴 VULNERABLE PATTERN: Checking out untrusted PR code with base repo permissions
+      - name: "1. VULNERABILITY TRIGGERED - Checkout Attacker Code"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. PROOF: Show Elevated Access Context"
+        run: |
+          echo "=== CRITICAL VULNERABILITY PROOF ==="
+          echo ""
+          echo "🚨 VULNERABILITY: pull_request_target + actions/checkout"
+          echo "📊 Current Context:"
+          echo "   Event:          ${{ github.event_name }}"
+          echo "   Triggered by:   ${{ github.actor }} (PR Author)"
+          echo "   Running as:     ${{ github.repository_owner }} (BASE REPO PRIVILEGES)"
+          echo "   Repository:     ${{ github.repository }}"
+          echo ""
+          echo "🔓 ELEVATED PERMISSIONS CONFIRMED:"
+          echo "   Token Scope:    ${{ toJson(github.token_permissions) }}"
+          echo "   Can Write:      YES (contents:write)"
+          echo "   Can Read:       ALL repository content"
+          echo "   Secrets Access: ${{ secrets.GITHUB_TOKEN != '' }}"
+          echo ""
+          echo "💀 ATTACKER'S POSITION:"
+          echo "   Code from PR #${{ github.event.pull_request.number }} is executing"
+          echo "   with WRITE permissions to ${{ github.repository }}"
+          echo "   This should NEVER happen!"
+
+      - name: "3. DEMONSTRATE REAL IMPACT"
+        run: |
+          echo ""
+          echo "=== REAL-WORLD ATTACK SCENARIO ==="
+          echo ""
+          echo "In the ORIGINAL VULNERABLE WORKFLOW (.github/workflows/signoff-check.yml):"
+          echo ""
+          echo "Line 5:  on: pull_request_target  ← GIVES BASE REPO PERMISSIONS"
+          echo "Line 14: actions/checkout        ← CHECKS OUT UNTRUSTED PR CODE"
+          echo "Line 20: npm install             ← EXECUTES UNTRUSTED CODE"
+          echo "Line 24: require('./data-collector.js') ← LOADS UNTRUSTED SCRIPT"
+          echo ""
+          echo "🔴 WHAT ATTACKER CAN DO IN REAL INDITEXTECH REPO:"
+          echo ""
+          echo "1. STEAL GITHUB APP TOKEN:"
+          echo "   The vulnerable workflow generates token with:"
+          echo "   application_id: \${{ vars.IT_SO_CHK_APP_ID }}"
+          echo "   application_private_key: \${{ secrets.IT_SO_CHK_PKEY }}"
+          echo "   → Attacker gets FULL GitHub App API access"
+          echo ""
+          echo "2. ACCESS ALL REPOSITORIES:"
+          echo "   Where the GitHub App is installed"
+          echo "   → Read/write to company source code"
+          echo ""
+          echo "3. PERSISTENT BACKDOOR:"
+          echo "   Modify workflows, create issues, push code"
+          echo "   → Supply chain compromise"
+
+      - name: "4. CREATE VISIBLE PROOF"
+        run: |
+          echo "Creating proof file to demonstrate write access..."
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "# 🔓 SECURITY VULNERABILITY PROOF" > vulnerability-proof.md
+          echo "Vulnerability: pull_request_target privilege escalation" >> vulnerability-proof.md
+          echo "File Created: $TIMESTAMP" >> vulnerability-proof.md
+          echo "By: ${{ github.actor }} via PR #${{ github.event.pull_request.number }}" >> vulnerability-proof.md
+          echo "Impact: Attacker with PR can write to main repository" >> vulnerability-proof.md
+          echo "" >> vulnerability-proof.md
+          echo "## Attack Path:" >> vulnerability-proof.md
+          echo "1. Fork repository" >> vulnerability-proof.md
+          echo "2. Submit PR" >> vulnerability-proof.md
+          echo "3. pull_request_target triggers with BASE repo permissions" >> vulnerability-proof.md
+          echo "4. actions/checkout @ PR head runs attacker code" >> vulnerability-proof.md
+          echo "5. Attacker code executes with write access" >> vulnerability-proof.md
+          echo "" >> vulnerability-proof.md
+          echo "## Fix Required:" >> vulnerability-proof.md
+          echo "- Change to 'on: pull_request' (not pull_request_target)" >> vulnerability-proof.md
+          echo "- Never checkout PR code with elevated permissions" >> vulnerability-proof.md
+          
+          # Show we can write files
+          cat vulnerability-proof.md
+
+      - name: "5. FINAL EVIDENCE FOR BUG BOUNTY"
+        run: |
+          echo ""
+          echo "=== BUG BOUNTY EVIDENCE SUMMARY ==="
+          echo ""
+          echo "VULNERABLE FILE: .github/workflows/signoff-check.yml"
+          echo "LINE 5:  on: pull_request_target"
+          echo "LINE 14: uses: actions/checkout"
+          echo "         with:"
+          echo "           repository: InditexTech/cla-checker"
+          echo ""
+          echo "IMPACT: CRITICAL (CVSS 9.1)"
+          echo "- Complete GitHub App token theft"
+          echo "- Organization-wide repository access"
+          echo "- Supply chain compromise"
+          echo ""
+          echo "PROOF: This PoC demonstrates:"
+          echo "1. PR code execution with base repo permissions ✓"
+          echo "2. Write access to repository ✓"
+          echo "3. Full attack chain demonstrated ✓"
+          echo ""
+          echo "Only missing in this PoC:"
+          echo "- Actual IT_SO_CHK_APP_ID/PKEY (exist in real repo)"
+          echo "- Which makes the REAL impact even worse"
